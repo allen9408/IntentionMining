@@ -1,0 +1,25 @@
+*.dot
+.DS_Store
+**/.DS_Store
+*.iml
+
+#Ignore local building paths
+build/
+dist/
+nbproject/
+private/
+.idea/
+.settings
+bin/
+lib/
+out/
+
+
+#Ignore local data
+output/
+temp/
+
+#Ignore Substates temp files
+Substates/*.csv
+Substates/*.dot
+Substates/*.md
