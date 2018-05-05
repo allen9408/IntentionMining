@@ -45,11 +45,6 @@ public class MAP_SSHHMM<O extends Observation> {
 	private static double lambda = 1;
 	private static double lambda_1 = 1;
 
-
-	private static Hashtable<Integer, AttributeDataSequences> attributeSet = new Hashtable<Integer, AttributeDataSequences>();
-	private static List<StateAttributeSequence> stateAttributeSet;
-//	private static boolean withAttribute = false;
-
 	/************************ configuration parameters ***********************/
 	public MAP_SSHHMM(String fileName) {
 		this.fileName = fileName;
@@ -60,7 +55,6 @@ public class MAP_SSHHMM<O extends Observation> {
 
 	static public void main(String[] argv) throws java.io.IOException, CloneNotSupportedException {
 		/* Input Data */
-		attributeSet = getAttributeFromFile();
 		SampleDataSequences sampleData = new SampleDataSequences(fileName);
 		List<List<ObservationDiscrete<SampleData>>> sequences = sampleData.getSampleDataSequences();
 
@@ -78,7 +72,7 @@ public class MAP_SSHHMM<O extends Observation> {
 		lambda_1 = 1.0;
 		lambda = 1.0;
 		hmmSet.clear();
-		STACTsss.STACTSSS(sequences, ID_set, attributeSet);
+		STACTsss.STACTSSS(sequences, ID_set);
 		// Output Average state numbers
 		int totalSize = 0;
 		for (Integer size : deepLevelActivityNumber) {
@@ -133,44 +127,9 @@ public class MAP_SSHHMM<O extends Observation> {
 	}
 
 
-	public static Hashtable<Integer, AttributeDataSequences> getAttributeFromFile() {
-		//		String attributesFilename = "dataForICHI/attributes_05.15.2017.csv";
-		String attributesFilename = "data/attributes.csv";
-		BufferedReader reader = null;
-		try {
-			reader = new BufferedReader(new FileReader(attributesFilename));
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		try {
-			reader = new BufferedReader(new FileReader(attributesFilename));
-		} catch (FileNotFoundException e1) {
-			e1.printStackTrace();
-		}
-		Hashtable<Integer, AttributeDataSequences> attributeSet = new Hashtable<Integer, AttributeDataSequences>();
-		try {
-			String line = null;
-			reader.readLine(); // the title
-			while ((line = reader.readLine()) != null) {
-				String[] record = line.split(",");
-				AttributeDataSequences tmp = new AttributeDataSequences(Integer.parseInt(record[0]));
-				for (int i = 0; i < 17; i++) {
-					tmp.setAttribute(i, Integer.parseInt(record[i + 1]));
-				}
-
-				// Add attribute sequence to hash table
-				attributeSet.put(Integer.parseInt(record[0]), tmp);
-
-			}
-		} catch (Exception e) {
-			e.printStackTrace();
-			System.out.println("Error in CsvFileReader !!!");
-		}
-		return attributeSet;
-	}
 
 	public <O extends Observation> void STACTSSS(List<List<ObservationDiscrete<SampleData>>> sequences,
-												 List<String> ID_set, Hashtable<Integer, AttributeDataSequences> attributeSet)
+			List<String> ID_set)
 			throws CloneNotSupportedException, IOException {
 
 		/* Build Initial HMM */
@@ -187,163 +146,15 @@ public class MAP_SSHHMM<O extends Observation> {
 		printLogLikelihood(finalmodel, sequences);
 
 
-		// Calculate Attribute probability in Transitions
-		StateAttributeSequence[][] transitionAttributeSet = getAttributeProbs(finalmodel, sequences, ID_set,
-				attributeSet);
 
-		// Output transition attribute probabilities
-		double[][] A = finalmodel.getA();
 
 
 		hmmSet.addHmm(finalmodel, 0, 0, 0);
-		// Output State Attribute Matrix
-		String attributeOutfile = "SubStates/Attribute_0.md";
-		stateAttributeSet = getStateAttributeProbs(finalmodel, sequences, ID_set, attributeSet);
-		BufferedWriter attributeOut = new BufferedWriter(new FileWriter(attributeOutfile));
-		for (int l = 0; l < finalmodel.nbStates(); l++) {
-			attributeOut.write("##----State " + l + "----\n");
-			StateAttributeSequence tmp = stateAttributeSet.get(l);
-			for (int i = 0; i < 17; i++) {
-				attributeOut.write("####Attribute " + i + "\n");
-				attributeOut.write("| Value | Probability |\n");
-				attributeOut.write("| ----- | ----------- |\n");
-
-				ArrayList<Integer> attributes = tmp.getAttributeValueSequence(i);
-
-				for (Integer x : attributes) {
-					attributeOut.write("|" + x + " |" + tmp.getAttributeProbability(i, x) / tmp.size(i) + "|\n");
-				}
-			}
-		}
-		// Calculate Attribute probability in Transitions
-		transitionAttributeSet = getAttributeProbs(finalmodel, sequences, ID_set, attributeSet);
-		A = finalmodel.getA();
-
-		for (int i = 0; i < finalmodel.nbStates(); i++) {
-			for (int j = 0; j < finalmodel.nbStates(); j++) {
-				if (A[i][j] != 0) {
-					if (transitionAttributeSet[i][j].size(0) != 0) {
-						attributeOut.write("##----Transition from " + i + " To " + j + "----\n");
-						for (int k = 0; k < 17; k++) {
-							attributeOut.write("####Attribute " + k + "\n");
-							attributeOut.write("| Value | Probability |\n");
-							attributeOut.write("| ----- | ----------- |\n");
-							ArrayList<Integer> attributes = transitionAttributeSet[i][j].getAttributeValueSequence(k);
-							for (Integer x : attributes) {
-								attributeOut.write(
-										"|" + x + " |" + transitionAttributeSet[i][j].getAttributeProbability(k, x)
-												/ transitionAttributeSet[i][j].size(k) + "|\n");
-							}
-							attributeOut.write("");
-						}
-					}
-				}
-			}
-		}
 
 		// recurssively split hierarchical model
-		hierarchicalSplitHMM(finalmodel, sequences, 1, 0, ID_set, "SubStates/SubState", attributeSet);
+		hierarchicalSplitHMM(finalmodel, sequences, 1, 0, ID_set, "SubStates/SubState");
 	}
 
-	/**
-	 * @param trainedHmm
-	 * @param sequences
-	 * @param ID_set
-	 * @return
-	 */
-	public static List<StateAttributeSequence> getStateAttributeProbs(Hmm<ObservationDiscrete<SampleData>> trainedHmm,
-																	  List<List<ObservationDiscrete<SampleData>>> sequences, List<String> ID_set,
-																	  Hashtable<Integer, AttributeDataSequences> attributeSet) {
-		// Path Finding -- Viterbi
-		ArrayList<int[]> states = new ArrayList<int[]>();
-		int index = 0;
-		List<StateAttributeSequence> stateAttributeSet = new ArrayList<StateAttributeSequence>(trainedHmm.nbStates());
-		for (int i = 0; i < trainedHmm.nbStates(); i++) {
-			StateAttributeSequence tmp = new StateAttributeSequence(i);
-			stateAttributeSet.add(tmp);
-		}
-		for (List<ObservationDiscrete<SampleData>> sequence : sequences) {
-			ViterbiCalculator vc = new ViterbiCalculator(sequence, trainedHmm);
-			states.add(vc.stateSequence());
-		}
-		for (int i = 0; i < states.size(); i++) {
-			int[] state = states.get(i);
-			int preState = state[0];
-			int curState = preState;
-			int idNum = Integer.parseInt(ID_set.get(i));
-			// System.out.println("getID:" + idNum);
-			AttributeDataSequences attributeSeq = attributeSet.get(idNum);
-			if (attributeSeq == null) {
-				System.out.println("NULL sequence");
-			}
-			StateAttributeSequence tmp = stateAttributeSet.get(curState);
-			for (int k = 0; k < 17; k++) {
-				// System.out.println(attributeSeq.getAttribute(k));
-				tmp.addAttributeContent(k, attributeSeq.getAttribute(k));
-			}
-			for (int j = 1; j < state.length; j++) {
-				// Label attributes to states
-				// System.out.print(state[j] + ", ");
-				curState = state[j];
-				if (true) {
-					tmp = stateAttributeSet.get(curState);
-					for (int k = 0; k < 17; k++) {
-						tmp.addAttributeContent(k, attributeSeq.getAttribute(k));
-					}
-				}
-				preState = curState;
-			}
-		}
-		return stateAttributeSet;
-	}
-
-	/**
-	 * @param trainedHmm
-	 * @param sequences
-	 * @param ID_set
-	 * @return
-	 */
-	public static StateAttributeSequence[][] getAttributeProbs(Hmm<ObservationDiscrete<SampleData>> trainedHmm,
-															   List<List<ObservationDiscrete<SampleData>>> sequences, List<String> ID_set,
-															   Hashtable<Integer, AttributeDataSequences> attributeSet) {
-		// Path Finding -- Viterbi
-		ArrayList<int[]> states = new ArrayList<int[]>();
-		for (List<ObservationDiscrete<SampleData>> sequence : sequences) {
-			ViterbiCalculator vc = new ViterbiCalculator(sequence, trainedHmm);
-			states.add(vc.stateSequence());
-		}
-		// Calculate Attribute Probability Transition Matrix
-		StateAttributeSequence[][] transitionAttributeSet = new StateAttributeSequence[trainedHmm.nbStates()][trainedHmm
-				.nbStates()];
-		for (int i = 0; i < trainedHmm.nbStates(); i++) {
-			for (int j = 0; j < trainedHmm.nbStates(); j++) {
-				transitionAttributeSet[i][j] = new StateAttributeSequence(j);
-			}
-		}
-		for (int i = 0; i < states.size(); i++) {
-			int[] state = states.get(i);
-			int preState = state[0];
-			int curState = preState;
-			int idNum = Integer.parseInt(ID_set.get(i));
-			// System.out.println("getID:" + idNum);
-			AttributeDataSequences attributeSeq = attributeSet.get(idNum);
-			if (attributeSeq == null) {
-				System.out.println("NULL sequence");
-			}
-
-			for (int j = 1; j < state.length; j++) {
-				// Label attributes to states
-				curState = state[j];
-				if (true) {
-					for (int k = 0; k < 17; k++) {
-						transitionAttributeSet[preState][curState].addAttributeContent(k, attributeSeq.getAttribute(k));
-					}
-				}
-				preState = curState;
-			}
-		}
-		return transitionAttributeSet;
-	}
 
 	/**
 	 * @param trainedHmm
@@ -354,7 +165,7 @@ public class MAP_SSHHMM<O extends Observation> {
 	 */
 	public static void hierarchicalSplitHMM(Hmm<ObservationDiscrete<SampleData>> trainedHmm,
 											List<List<ObservationDiscrete<SampleData>>> sequences, int depth, int parent, List<String> ID_set,
-											String subfile, Hashtable<Integer, AttributeDataSequences> attributeSet)
+											String subfile)
 			throws IOException, CloneNotSupportedException {
 		// Get state trace by viterbi
 		ArrayList<int[]> states = new ArrayList<int[]>();
@@ -371,7 +182,6 @@ public class MAP_SSHHMM<O extends Observation> {
 			String nextLevelFile = subfile + "_" + Integer.toString(i);
 			String subStateFilename = nextLevelFile + ".csv";
 			String subStateOutput = nextLevelFile + ".dot";
-			String attributeOutfile = nextLevelFile + ".md";
 
 			BufferedWriter substateOut = new BufferedWriter(new FileWriter(subStateFilename));
 			// Create new sequence file for each state i
@@ -387,8 +197,6 @@ public class MAP_SSHHMM<O extends Observation> {
 				for (int k = 0; k < state.length; k++) {
 					if (state[k] == i) {
 						substateOut.write(id + "," + sequence.get(k).value + "\n");
-						// System.out.println(id + "," + sequence.get(k).value +
-						// ",");
 					}
 				}
 			}
@@ -425,8 +233,6 @@ public class MAP_SSHHMM<O extends Observation> {
 						divisionProb[l] = 0;
 						continue;
 					}
-					// System.out.println("-------Division: State: " + l + "
-					// -------");
 					// get division of each state
 					double[] observationVector = new double[SampleData.values().length];
 					int[] observationIndex = new int[SampleData.values().length];
@@ -471,67 +277,14 @@ public class MAP_SSHHMM<O extends Observation> {
 				}
 
 				hmmSet.addHmm(sub_finalmodel, depth, i, parent);
-//				System.out.println("Add depth = " + depth + ", stateNum = " + i + ", parent = " + parent);
 				(new GenericHmmDrawerDot()).writeSub(sub_finalmodel, subStateOutput, printTransitionThreshold, inState,
 						inStateProbs);
 
-				List<StateAttributeSequence> stateAttributeSet = getStateAttributeProbs(sub_finalmodel, sub_sequences,
-						sub_ID_set, attributeSet);
-				StateAttributeSequence[][] transitionAttributeSet = getAttributeProbs(sub_finalmodel, sub_sequences,
-						sub_ID_set, attributeSet);
-				BufferedWriter attributeOut = new BufferedWriter(new FileWriter(attributeOutfile));
-				for (int l = 0; l < sub_finalmodel.nbStates(); l++) {
-					attributeOut.write("##----State " + l + "----\n");
-					StateAttributeSequence tmp = stateAttributeSet.get(l);
-					for (int m = 0; m < 17; m++) {
-						attributeOut.write("####Attribute " + m + "\n");
-						attributeOut.write("| Value | Probability |\n");
-						attributeOut.write("| ----- | ----------- |\n");
 
-						ArrayList<Integer> attributes = tmp.getAttributeValueSequence(m);
-						// System.out.println("Number of values: " +
-						// tmp.getAttributeValueNumber(i));
-						for (Integer x : attributes) {
-							attributeOut
-									.write("|" + x + " |" + tmp.getAttributeProbability(m, x) / tmp.size(m) + "|\n");
-						}
-					}
-				}
-				// Calculate Attribute probability in Transitions
-				transitionAttributeSet = getAttributeProbs(sub_finalmodel, sequences, ID_set, attributeSet);
-				double[][] A = sub_finalmodel.getA();
-
-				for (int m = 0; m < sub_finalmodel.nbStates(); m++) {
-					for (int n = 0; n < sub_finalmodel.nbStates(); n++) {
-						if (A[m][n] != 0) {
-							if (transitionAttributeSet[m][n].size(0) != 0) {
-								attributeOut.write("##----Transition from " + m + " To " + n + "----\n");
-								for (int o = 0; o < 17; o++) {
-									attributeOut.write("####Attribute " + o + "\n");
-									attributeOut.write("| Value | Probability |\n");
-									attributeOut.write("| ----- | ----------- |\n");
-									ArrayList<Integer> attributes = transitionAttributeSet[m][n]
-											.getAttributeValueSequence(o);
-									for (Integer x : attributes) {
-										attributeOut.write("|" + x + " |"
-												+ transitionAttributeSet[m][n].getAttributeProbability(o, x)
-												/ transitionAttributeSet[m][n].size(o)
-												+ "|\n");
-									}
-									attributeOut.write("");
-								}
-							}
-						}
-					}
-				}
-				attributeOut.close();
 
 				if (sub_finalmodel.nbStates() > 3) {
-					hierarchicalSplitHMM(sub_finalmodel, sub_sequences, depth + 1, i, sub_ID_set, nextLevelFile,
-							attributeSet);
+					hierarchicalSplitHMM(sub_finalmodel, sub_sequences, depth + 1, i, sub_ID_set, nextLevelFile);
 				} else {
-					// System.out.println("#### Final " + nextLevelFile + "
-					// activityNum: " + inState.get(1).size());
 					deepLevelActivityNumber.add(inState.get(1).size());
 				}
 			}
