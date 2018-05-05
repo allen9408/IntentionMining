@@ -20,6 +20,7 @@ output/
 temp/
 
 #Ignore Substates temp files
-Substates/*.csv
-Substates/*.dot
-Substates/*.md
+SubStates/*.csv
+SubStates/*.dot
+SubStates/*.md
+SubStates/images/*.png

@@ -35,7 +35,7 @@ public class MAP_SSHHMM<O extends Observation> {
 	/************************ configuration parameters ***********************/
 
 	int targetSize = Integer.MAX_VALUE;
-	private static String fileName = "dataForICHI/Intubation_synthetic.csv";
+	private static String fileName = "data/synthetic.csv";
 	private static double printTransitionThreshold = 0;
 	private Hmm<ObservationDiscrete<SampleData>> finalmodel;
 	private static Hmm<ObservationDiscrete<SampleData>> iniHmm;
@@ -135,7 +135,7 @@ public class MAP_SSHHMM<O extends Observation> {
 
 	public static Hashtable<Integer, AttributeDataSequences> getAttributeFromFile() {
 		//		String attributesFilename = "dataForICHI/attributes_05.15.2017.csv";
-		String attributesFilename = "dataForICHI/Intubation_attributes.csv";
+		String attributesFilename = "data/attributes.csv";
 		BufferedReader reader = null;
 		try {
 			reader = new BufferedReader(new FileReader(attributesFilename));

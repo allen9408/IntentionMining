@@ -108,4 +108,4 @@ done
 
 echo } >> $outputFile
 cd ..
-dot -T pdf result.dot -o ../result.pdf
+dot -T png result.dot -o result.png

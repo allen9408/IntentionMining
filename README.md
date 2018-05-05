@@ -1,6 +1,9 @@
 # IntentionMining
 2018 ICHI 
 
+## Hirarchical HMM Structure
+
+![](result.png)
 
 ## How To Run  
 + Train the H-HMM:  
