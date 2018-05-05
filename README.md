@@ -14,3 +14,4 @@
 
   See *result.pdf* in root directory.
 
+This repository is based on the implementation [Jean-Marc Francois's jahmm](https://code.google.com/archive/p/jahmm/).  
